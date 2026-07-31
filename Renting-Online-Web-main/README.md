@@ -26,8 +26,8 @@ BorrowIt is a modern web application built with React and Vite that allows users
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/johan6337/Renting-Online-Web.git
-   cd Renting-Online-Web
+   git clone https://github.com/Melwyn7195/borrowit-aws-migration.git
+   cd borrowit-aws-migration/Renting-Online-Web-main
    ```
 
 2. Install dependencies:

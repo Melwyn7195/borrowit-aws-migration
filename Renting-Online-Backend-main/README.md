@@ -15,7 +15,8 @@ BorrowIt is a peer-to-peer rental marketplace backend that allows users to:
 
 - **Runtime**: Node.js
 - **Framework**: Express.js
-- **Database**: PostgreSQL (via `postgres` package)
+- **Database**: PostgreSQL (via `postgres` package) — Amazon RDS in AWS, a local
+  instance in development
 - **Authentication**: JWT (JSON Web Tokens)
 - **Password Hashing**: bcrypt
 - **API Documentation**: OpenAPI 3.0 + Swagger UI
@@ -37,7 +38,8 @@ be/
 ├── db/                  # Database configuration and schema
 │   ├── index.js             # PostgreSQL connection setup
 │   └── schema.sql           # Database schema definitions
-├── .env                 # Environment variables (not in repo)
+├── .env.example         # Documented template — copy to .env
+├── .env                 # Your local config (gitignored)
 ├── index.js            # Application entry point
 ├── openapi.yaml        # OpenAPI/Swagger specification
 ├── package.json        # Project dependencies and scripts
@@ -103,8 +105,8 @@ be/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/johan6337/Renting-Online-Web.git
-   cd Renting-Online-Web/be
+   git clone https://github.com/Melwyn7195/borrowit-aws-migration.git
+   cd borrowit-aws-migration/Renting-Online-Backend-main
    ```
 
 2. **Install dependencies**
@@ -113,11 +115,32 @@ be/
    ```
 
 3. **Set up environment variables**
-   
-   Create a `.env` file in the root directory:
 
+   Copy the example file and fill it in:
 
-4. **Start the development server**
+   ```bash
+   cp .env.example .env
+   ```
+
+   Every variable is documented there. The minimum for local development is
+   `DATABASE_URL` pointing at a local PostgreSQL, `DB_SSL=disable`, and a
+   `JWT_SECRET`. Generate one with:
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+
+   In AWS none of this comes from a file — the database credentials are injected
+   into the task definition from Secrets Manager, and `.env` is gitignored.
+
+4. **Load the database schema**
+
+   ```bash
+   npm run migrate db/schema.sql
+   npm run seed          # optional: demo users and products
+   ```
+
+5. **Start the development server**
    ```bash
    npm run dev
    ```
@@ -175,8 +198,21 @@ curl -X GET http://localhost:3456/api/users/1 \
 Follow this step-by-step workflow when implementing a new feature:
 
 #### 1. **Database Schema**
-   
-   Add tables or columns on database (which is on Supabase)
+
+   Add the table or column to `db/schema.sql`. It is the source of truth for the
+   schema and is written with `CREATE TABLE IF NOT EXISTS`, so it can be re-run.
+
+   Apply it locally with:
+
+   ```bash
+   npm run migrate db/schema.sql
+   ```
+
+   On AWS the database has no public endpoint, so the same file is applied from
+   inside a running Fargate task via `aws ecs execute-command` — see
+   [../infra/README.md](../infra/README.md), "Load the schema". Because the file
+   ships inside the container image, a schema change means rebuilding and pushing
+   the image before it takes effect.
 
 #### 2. **Model** (`models/`)
    

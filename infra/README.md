@@ -88,12 +88,8 @@ because `/health` runs `SELECT 1` against a database with no tables yet.
 
 ### 5. Load the schema
 
-The repo has no `db/schema.sql` — the schema currently only exists in Supabase.
-Dump it first:
-
-```powershell
-pg_dump --schema-only --no-owner --no-privileges "<your-supabase-url>" -f ..\Renting-Online-Backend-main\db\schema.sql
-```
+`db/schema.sql` is in the repo — seven tables, written with
+`CREATE TABLE IF NOT EXISTS` throughout, so re-running it is harmless.
 
 RDS has no public endpoint, so apply it from inside a running task:
 
@@ -111,8 +107,12 @@ node scripts/run-sql.js db/schema.sql
 npm run seed
 ```
 
-The image is built from your working tree, so `schema.sql` must exist **before**
-step 3. If you dumped it afterwards, rebuild and push, then redeploy.
+`npm run seed` loads demo users and products, all sharing one password from
+`services/seeder.js` — it is for the demo dataset, not for anything real.
+
+Note that `schema.sql` is read from **inside the image**, not from your working
+tree. Editing it locally changes nothing until you rebuild and push (step 3) and
+redeploy.
 
 ### 6. Point CloudFront at the API
 
