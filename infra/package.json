@@ -1,0 +1,30 @@
+{
+  "name": "borrowit-infra",
+  "version": "1.0.0",
+  "private": true,
+  "bin": {
+    "borrowit": "bin/borrowit.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "synth": "cdk synth",
+    "diff": "cdk diff",
+    "deploy:all": "cdk deploy --all",
+    "up": "cdk deploy --exclusively BorrowitApp && npm run wire",
+    "down": "cdk destroy BorrowitApp",
+    "endpoints:ha": "cdk deploy BorrowitFoundation -c vpcEndpoints=ha",
+    "wire": "node scripts/wire.mjs",
+    "deploy:web": "node scripts/deploy-web.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "aws-cdk": "^2.160.0",
+    "hugo-extended": "^0.164.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.6.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.160.0",
+    "constructs": "^10.3.0"
+  }
+}

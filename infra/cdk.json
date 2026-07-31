@@ -1,0 +1,15 @@
+{
+  "app": "npx ts-node --prefer-ts-exts bin/borrowit.ts",
+  "watch": {
+    "include": ["**"],
+    "exclude": ["README.md", "cdk*.json", "tsconfig.json", "package*.json", "node_modules", "cdk.out"]
+  },
+  "context": {
+    "@aws-cdk/core:defaultCrossStackReferences": "strong",
+    "region": "ap-southeast-1",
+    "imageTag": "obs-20260728b",
+    "desiredCount": 1,
+    "multiAz": false,
+    "scaling": false
+  }
+}

@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+infra/cdk.out/
+
+# Compiled CDK TypeScript — the .ts files are the source of truth.
+infra/**/*.js
+infra/**/*.d.ts
+!infra/scripts/*.mjs
+
+# CDK synth-time lookup cache. Machine- and account-specific: it pins the AWS
+# account ID and the current ALB hostname, both of which go stale. `npm run wire`
+# rewrites it. See infra/README.md.
+infra/cdk.context.json
+.cdk.staging/
+
+# Secrets. The RDS password lives in Secrets Manager and is injected into the
+# task definition by AppStack — it must never be committed.
+.env
+.env.*
+!.env.example
+# Exception: the frontend .env is deliberately empty and documents why the API
+# is same-origin. It carries no secret.
+!Renting-Online-Web-main/.env
+*.pem
+*.key
+
+# Hugo workshop site — tracked separately.
+fcj-workshop-template-main/
+
+# Working notes and the blog drafts. Kept locally, not published — the
+# reasoning behind each cost tradeoff is in README.md instead.
+CLAUDE.md
+blog-*.md
+blog-*.txt
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.swp
