@@ -9,16 +9,18 @@
     "migrate": "node scripts/run-sql.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/minhhieu121/Renting-Online-Backend.git"
+    "url": "git+https://github.com/Melwyn7195/borrowit-aws-migration.git",
+    "directory": "Renting-Online-Backend-main"
   },
   "author": "",
-  "license": "ISC",
+  "license": "UNLICENSED",
   "bugs": {
-    "url": "https://github.com/minhhieu121/Renting-Online-Backend/issues"
+    "url": "https://github.com/Melwyn7195/borrowit-aws-migration/issues"
   },
-  "homepage": "https://github.com/minhhieu121/Renting-Online-Backend#readme",
+  "homepage": "https://github.com/Melwyn7195/borrowit-aws-migration#readme",
   "description": "Backend for BorrowIt - A rental platform",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.931.0",

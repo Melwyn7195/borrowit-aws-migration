@@ -74,4 +74,4 @@ src/
 
 ## License
 
-This project is licensed under the MIT License.
+No license is granted. See the root [README](../README.md#license-and-attribution).

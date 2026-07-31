@@ -130,6 +130,22 @@ file, a task definition literal, `cdk.json`, or this repository. Read it with:
 aws secretsmanager get-secret-value --secret-id <arn>
 ```
 
+## License and attribution
+
+**No license is granted.** This is published to be read, not reused — default
+copyright applies, so the code is visible but not licensed for redistribution.
+
+The reason is authorship rather than preference. The AWS migration — everything
+in [infra/](infra/), the containerization, and the deployment tooling — is my own
+work. The application it deploys grew out of a university team project, so the
+backend and frontend have contributors beyond me and I am not in a position to
+license that code on their behalf. Their pre-migration history lives in
+[johan6337/Renting-Online-Web](https://github.com/johan6337/Renting-Online-Web)
+and
+[minhhieu121/Renting-Online-Backend](https://github.com/minhhieu121/Renting-Online-Backend).
+
+If you want to reuse something here, open an issue and ask.
+
 ## Notes
 
 - The backend has no test suite (`npm test` exits 1). Changes are verified by
