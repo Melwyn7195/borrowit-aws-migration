@@ -93,16 +93,6 @@ export default function Footer() {
             <h3 className="text-xl font-bold">Support</h3>
             <address className="not-italic space-y-3 text-sm">
               <p>268 Ly Thuong Kiet,<br />Dien Hong Ward,  Ho Chi Minh City</p>
-              <p>
-                <a href="mailto:hieu.tranducminh@gmail.com" className="hover:underline">
-                  hieu.tranducminh@gmail.com
-                </a>
-              </p>
-              <p>
-                <a href="tel:+88015888889999" className="hover:underline">
-                  +84 12345678
-                </a>
-              </p>
             </address>
           </div>
 
@@ -187,8 +177,7 @@ export default function Footer() {
         </div>
       </div>
 
-
-        {/* Copyright Section */}
+      {/* Copyright Section */}
       <div className="border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <p className="text-center text-sm text-gray-400">
