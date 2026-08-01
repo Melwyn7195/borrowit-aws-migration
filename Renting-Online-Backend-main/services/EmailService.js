@@ -19,6 +19,36 @@ class SimpleEmailService {
     }
   }
 
+  // Whether mail can actually be delivered. The credentials are the real
+  // determinant: without them nodemailer authenticates as `undefined` and
+  // Gmail rejects the session, so "send" means "throw". Callers use this to
+  // decide whether a flow that depends on email is worth starting at all.
+  //
+  // NODE_ENV is deliberately not part of this. The old guards keyed off it
+  // (`NODE_ENV !== 'production' && !forceSend`), which made SEND_EMAILS a
+  // no-op on Fargate - every method tried to send there no matter what.
+  isConfigured() {
+    // Explicit off switch for a deploy that has credentials but should stay
+    // quiet. Anything else falls through to whether credentials exist.
+    if (process.env.SEND_EMAILS === 'false') {
+      return false;
+    }
+    return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+  }
+
+  // Origin for the pages in this service's own public/ directory -
+  // verify-email.html and reset-password.html. In production CloudFront routes
+  // /verify-email* and /reset-password* to the ALB, so the distribution URL
+  // reaches them and the link stays same-origin with the API it calls.
+  // Locally FRONTEND_URL points at the Vite dev server, which does not serve
+  // these files, so fall back to the API's own port.
+  backendPageOrigin() {
+    if (process.env.NODE_ENV === 'production' && process.env.FRONTEND_URL) {
+      return process.env.FRONTEND_URL.replace(/\/+$/, '');
+    }
+    return `http://localhost:${process.env.PORT || 3456}`;
+  }
+
   // Generate verification token
   generateVerificationToken() {
     return crypto.randomBytes(32).toString('hex');
@@ -30,17 +60,24 @@ class SimpleEmailService {
   }
 
   async sendVerificationEmail(userEmail, verificationToken) {
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3456'}/verify-email.html?token=${verificationToken}`;
-    
+    const verificationUrl = `${this.backendPageOrigin()}/verify-email.html?token=${verificationToken}`;
+
     // Always log for debugging
     console.log('=== EMAIL VERIFICATION ===');
     console.log(`To: ${userEmail}`);
     console.log(`Verification URL: ${verificationUrl}`);
     console.log('========================');
-    
+
+    // This method used to have no guard at all, unlike every other one here.
+    // On Fargate that meant an unavoidable throw on every registration.
+    if (!this.isConfigured()) {
+      console.log('Email is not configured - logged the URL above instead of sending.');
+      return { messageId: 'not-configured' };
+    }
+
     // Initialize Gmail transporter
     await this.initialize();
-    
+
     const mailOptions = {
       from: process.env.GMAIL_USER,
       to: userEmail,
@@ -83,18 +120,17 @@ class SimpleEmailService {
   }
 
   async sendPasswordResetEmail(userEmail, resetToken) {
-    const forceSend = process.env.SEND_EMAILS === 'true';
+    // reset-password.html is served by this API, not by the SPA build.
+    const resetUrl = `${this.backendPageOrigin()}/reset-password.html?token=${resetToken}`;
 
-    // Force reset password to use backend port 3456 where the HTML file is served
-    const resetUrl = `http://localhost:3456/reset-password.html?token=${resetToken}`;
-
-    // In dev default we only log the URL. If SEND_EMAILS=true we will attempt to send via SMTP.
-    if (process.env.NODE_ENV !== 'production' && !forceSend) {
+    // Without credentials we only log the URL, which is still enough to walk
+    // through the flow by hand.
+    if (!this.isConfigured()) {
       console.log('=== PASSWORD RESET ===');
       console.log(`To: ${userEmail}`);
       console.log(`Reset URL: ${resetUrl}`);
       console.log('=====================');
-      return { messageId: 'dev-mode' };
+      return { messageId: 'not-configured' };
     }
 
     await this.initialize();
@@ -143,8 +179,6 @@ class SimpleEmailService {
   }
 
   async sendOrderEmail(userEmail, order) {
-    const forceSend = process.env.SEND_EMAILS === 'true';
-
     const subject = `Order ${order.orderNumber} - Status: ${order.status}`;
     const orderUrl = `${process.env.FRONTEND_URL || 'http://localhost:3456'}/orders/${order.orderNumber}`;
 
@@ -166,14 +200,14 @@ class SimpleEmailService {
       </div>
     `;
 
-    // In dev default, log instead of sending unless forced
-    if (process.env.NODE_ENV !== 'production' && !forceSend) {
-      console.log('=== ORDER EMAIL (dev) ===');
+    // Log instead of sending when mail is not configured.
+    if (!this.isConfigured()) {
+      console.log('=== ORDER EMAIL (not sent) ===');
       console.log(`To: ${userEmail}`);
       console.log(`Subject: ${subject}`);
       console.log(`Order URL: ${orderUrl}`);
-      console.log('==========================');
-      return { messageId: 'dev-mode' };
+      console.log('==============================');
+      return { messageId: 'not-configured' };
     }
 
     await this.initialize();
@@ -196,8 +230,6 @@ class SimpleEmailService {
   }
 
   async sendAdminNotificationToSeller(sellerEmail, subject, message, productName) {
-    const forceSend = process.env.SEND_EMAILS === 'true';
-
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: #ff4757; color: white; padding: 20px; text-align: center;">
@@ -221,15 +253,15 @@ class SimpleEmailService {
       </div>
     `;
 
-    // In dev default, log instead of sending unless forced
-    if (process.env.NODE_ENV !== 'production' && !forceSend) {
-      console.log('=== ADMIN NOTIFICATION TO SELLER (dev) ===');
+    // Log instead of sending when mail is not configured.
+    if (!this.isConfigured()) {
+      console.log('=== ADMIN NOTIFICATION TO SELLER (not sent) ===');
       console.log(`To: ${sellerEmail}`);
       console.log(`Subject: ${subject}`);
       console.log(`Product: ${productName}`);
       console.log(`Message: ${message}`);
-      console.log('==========================================');
-      return { messageId: 'dev-mode', success: true };
+      console.log('===============================================');
+      return { messageId: 'not-configured', success: true };
     }
 
     await this.initialize();

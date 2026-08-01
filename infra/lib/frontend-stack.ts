@@ -119,6 +119,16 @@ export class FrontendStack extends cdk.Stack {
       // Swagger UI. `/api-docs*` also covers the assets it loads from
       // /api-docs/. It does not overlap /api/* - that pattern needs the slash.
       apiBehaviors['/api-docs*'] = apiBehavior;
+      // The email verification and password reset pages are static files in
+      // the API's public/ directory, not routes in the SPA build. They carry a
+      // .html extension, so the SPA function below deliberately leaves them
+      // alone and the default behaviour would look them up in the web bucket
+      // and answer 403. Routing them to the ALB is what makes the link in a
+      // verification email resolve at all. Being same-origin with /api/* is
+      // also what lets those pages call the API on a relative path instead of
+      // an absolute host the browser would block as mixed content.
+      apiBehaviors['/verify-email*'] = apiBehavior;
+      apiBehaviors['/reset-password*'] = apiBehavior;
     }
 
     // React Router owns the client-side routes, so a deep link like

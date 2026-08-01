@@ -47,11 +47,18 @@
         <h1>Email Verification</h1>
         <div id="message" class="loading">Verifying your email...</div>
         <div id="actions" style="display: none;">
-            <a href="http://localhost:5173" class="btn">Go to Login</a>
+            <a href="/login" id="loginLink" class="btn">Go to Login</a>
         </div>
     </div>
 
     <script>
+        // This page is served by the API. Behind CloudFront the SPA shares the
+        // origin, so /login is correct; on a dev machine the API is on 3456 and
+        // the SPA is on the Vite port instead.
+        if (window.location.port === '3456') {
+            document.getElementById('loginLink').href = 'http://localhost:5173/login';
+        }
+
         // Get token from URL
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
@@ -62,8 +69,10 @@
             messageDiv.innerHTML = '<div class="error">No verification token found</div>';
             messageDiv.className = 'error';
         } else {
-            // Call verification API
-            fetch('http://localhost:3456/api/users/verify-email', {
+            // Relative path: this page and the API are the same origin, both
+            // locally and behind CloudFront. An absolute http:// host would be
+            // blocked as mixed content on the deployed HTTPS site.
+            fetch('/api/users/verify-email', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

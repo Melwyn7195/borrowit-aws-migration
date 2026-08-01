@@ -32,7 +32,18 @@ const verifySession = async (req, res, next) => {
         sessionValid: false
       });
     }
-    
+
+    // An unverified account must not be able to use the API. This used to be
+    // checked at login only, so a session minted anywhere else - registration,
+    // a token refresh - sailed straight past the verification gate.
+    if (user.status === 'pending') {
+      return res.status(403).json({
+        success: false,
+        message: 'Please verify your email address before using your account.',
+        sessionValid: false
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {

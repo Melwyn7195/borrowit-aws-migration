@@ -7,7 +7,7 @@
   "context": {
     "@aws-cdk/core:defaultCrossStackReferences": "strong",
     "region": "ap-southeast-1",
-    "imageTag": "obs-20260728b",
+    "imageTag": "email-20260801",
     "desiredCount": 1,
     "multiAz": false,
     "scaling": false

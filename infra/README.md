@@ -292,8 +292,15 @@ Things that are intentionally not done yet:
 - **`JWT_REFRESH_SECRET` is unset**, so refresh tokens are signed with
   `JWT_SECRET` via the fallback in `userController`. Splitting them costs
   another $0.40/month in Secrets Manager and is hardening, not a fix.
-- **Email is unconfigured.** `EmailService` only sends when `SEND_EMAILS=true`
-  with `GMAIL_USER` / `GMAIL_APP_PASSWORD` set; otherwise it logs the message.
+- **Email is unconfigured.** `EmailService.isConfigured()` requires both
+  `GMAIL_USER` and `GMAIL_APP_PASSWORD`; neither is set on the task, so every
+  message is logged instead of sent. `SEND_EMAILS=false` forces that off state
+  even when credentials exist. Because delivery is off, registration creates
+  accounts as `active` rather than `pending` — a verification gate nobody can
+  clear is a lockout, since login rejects `pending`. Setting the two credentials
+  restores the real verification flow with no other change. The verification and
+  reset links point at `/verify-email.html` and `/reset-password.html`, which
+  FrontendStack routes to the ALB so the API can serve them same-origin.
 - **No CI/CD.** GitHub Actions to build, push and `cdk deploy` is the next step.
 - **No tracing.** X-Ray would show where a slow request spends its time; the
   request log only gives the total. Not worth the instrumentation before the

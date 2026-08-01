@@ -85,6 +85,13 @@ const registerUser = async (req, res) => {
       });
     }
 
+    // A verification gate is only a gate if the mail can actually arrive.
+    // With no credentials configured the account would sit at `pending`
+    // forever and login rejects `pending` - that is a lockout, not a security
+    // control, and the only way out is an admin editing the row by hand. So
+    // hold the account back only when the service can send the message.
+    const emailEnabled = emailService.isConfigured();
+
     // Generate verification token
     const verificationToken = emailService.generateVerificationToken();
     const tokenExpires = emailService.generateTokenExpiry();
@@ -95,34 +102,44 @@ const registerUser = async (req, res) => {
       email,
       password,
       role: role || 'customer',
-      status: 'pending',
-      verificationToken,
-      tokenExpires
+      status: emailEnabled ? 'pending' : 'active',
+      // No point storing a token nobody will ever be sent.
+      verificationToken: emailEnabled ? verificationToken : null,
+      tokenExpires: emailEnabled ? tokenExpires : null
     });
 
     // Send verification email
-    try {
-      await emailService.sendVerificationEmail(email, verificationToken);
-    } catch (emailError) {
-      console.error('Failed to send verification email:', emailError);
-      // Continue with registration even if email fails
+    if (emailEnabled) {
+      try {
+        await emailService.sendVerificationEmail(email, verificationToken);
+      } catch (emailError) {
+        console.error('Failed to send verification email:', emailError);
+        // Continue with registration even if email fails
+      }
     }
 
-    // Generate tokens (for immediate login if needed)
-    const token = generateToken(user.user_id, user.role);
-    const refreshToken = generateRefreshToken(user.user_id);
-    
-    // Set session cookies
-    setSessionCookie(res, token, refreshToken);
+    // Only hand out a session if the account is actually usable. Issuing
+    // cookies for a `pending` account is what made the gate incoherent: the
+    // browser held a working 7-day session that every endpoint accepted, so
+    // "unverified" blocked nothing until the cookie lapsed - at which point
+    // login refused to replace it and the account was locked out for good.
+    let token = null;
+    if (!emailEnabled) {
+      token = generateToken(user.user_id, user.role);
+      const refreshToken = generateRefreshToken(user.user_id);
+      setSessionCookie(res, token, refreshToken);
+    }
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully! Please check your email to verify your account.',
+      message: emailEnabled
+        ? 'User registered successfully! Please check your email to verify your account.'
+        : 'User registered successfully! You can log in now.',
       data: {
         user: sanitizeUser(user),
-        token,  
-        sessionCreated: true,
-        requiresEmailVerification: true
+        token,
+        sessionCreated: !emailEnabled,
+        requiresEmailVerification: emailEnabled
       }
     });
   } catch (error) {
@@ -291,7 +308,19 @@ const getCurrentUser = async (req, res) => {
           sessionValid: false
         });
       }
-      
+
+      // Same gate as verifySession. Every protected screen in the SPA decides
+      // what to render from this one call, so letting `pending` through here
+      // would hand an unverified account the whole app.
+      if (user.status === 'pending') {
+        clearSessionCookies(res);
+        return res.status(403).json({
+          success: false,
+          message: 'Please verify your email address before using your account.',
+          sessionValid: false
+        });
+      }
+
       res.status(200).json({
         success: true,
         data: sanitizeUser(user),
@@ -306,7 +335,9 @@ const getCurrentUser = async (req, res) => {
           const refreshDecoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
           const user = await userModel.getUserById(refreshDecoded.id);
           
-          if (user && user.status !== 'suspended') {
+          // A refresh must not upgrade an unverified account into a working
+          // session either.
+          if (user && user.status !== 'suspended' && user.status !== 'pending') {
             // Generate new tokens
             const newToken = generateToken(user.user_id, user.role);
             const newRefreshToken = generateRefreshToken(user.user_id);
@@ -362,14 +393,16 @@ const refreshSession = async (req, res) => {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
     const user = await userModel.getUserById(decoded.id);
     
-    if (!user || user.status === 'suspended') {
+    // `pending` is refused here too - otherwise this endpoint would be a way
+    // to mint a fresh session for an unverified account.
+    if (!user || user.status === 'suspended' || user.status === 'pending') {
       clearSessionCookies(res);
       return res.status(401).json({
         success: false,
         message: 'Invalid refresh token'
       });
     }
-    
+
     // Generate new tokens
     const newToken = generateToken(user.user_id, user.role);
     const newRefreshToken = generateRefreshToken(user.user_id);
@@ -476,6 +509,26 @@ const updateUser = async (req, res) => {
     delete updates.password;
     delete updates.created_at;
     delete updates.updated_at;
+
+    // The route guard admits every authenticated role, so without an ownership
+    // check any customer could edit any other account by id - including
+    // setting their own role to `admin` or lifting a suspension. Non-admins
+    // get their own row only, and never the two fields that grant privilege.
+    const isAdmin = req.user.role === 'admin';
+    if (!isAdmin) {
+      if (String(req.user.user_id) !== String(id)) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only update your own account.'
+        });
+      }
+      // Dropped rather than rejected: the profile screens post the whole form
+      // back, and failing the request would break a legitimate edit.
+      delete updates.role;
+      delete updates.status;
+      delete updates.verification_token;
+      delete updates.token_expires;
+    }
 
     // Validate status if provided
     if (updates.status) {
@@ -636,6 +689,15 @@ const resendVerificationEmail = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Email is already verified'
+      });
+    }
+
+    // Nothing to resend if the service cannot send. Say so plainly rather
+    // than issuing a fresh token and failing with a generic 500.
+    if (!emailService.isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Email delivery is not configured on this deployment. Contact an administrator to activate the account.'
       });
     }
 
