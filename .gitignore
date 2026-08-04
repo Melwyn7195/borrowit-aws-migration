@@ -30,6 +30,7 @@ infra/cdk.context.json
 
 # Hugo workshop site — tracked separately.
 fcj-workshop-template-main/
+fcaj-hcmut-template-main/
 
 # Working notes and the blog drafts. Kept locally, not published — the
 # reasoning behind each cost tradeoff is in README.md instead.
